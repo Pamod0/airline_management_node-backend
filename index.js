@@ -1,12 +1,28 @@
-const http = require('http');
+const http = require("http");
+const fs = require("fs");
 
 const server = http.createServer((req, res) => {
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'text/plain');
-    res.end('Hello World!\n');
+    if (req.url === "/") {
+        res.writeHead(200, { "Content-Type": "text/html" });
+        fs.createReadStream("./index.html").pipe(res);
+
+    } else if (req.url==="/book") {
+        res.writeHead(200, { "Content-Type": "text/html" });
+        fs.createReadStream("./form.html").pipe(res);
+    }
+    else if (req.url==="/notice") {
+        res.writeHead(200, { "Content-Type": "text/html" });
+        fs.createReadStream("./notice.html").pipe(res);
+
+    } else if (req.method === "GET") {
+        res.writeHead(200, { "Content-Type": "text/html" });
+        fs.createReadStream("./notice.html").pipe(res);
+    } else {
+        res.writeHead(404);
+        res.end("Page not found"); 
+    }
 });
 
-const port = 3000;
-server.listen(port, () => {
-    console.log(`Server running at port: ${port}`);
+server.listen(5000, () => {
+    console.log("Server listening on port 5000");
 });
