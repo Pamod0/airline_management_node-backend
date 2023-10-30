@@ -2,47 +2,70 @@ require('dotenv').config()
 
 const express = require('express')
 const app = express()
-
+const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 
 app.use(express.json())
 
-app.get('/', (req, res) => {
-  res.status(200).send('Welcome')
+const users = []
+
+app.get('/users', (req, res) => {
+  res.json(users)
 })
 
-// we can use 'Postman' for send a get request with body
-app.post('/login', (req, res) => {
-  const username = req.body.username
-  const user = { name: username }
+app.get('/user/my-details', authenticateToken, (req, res) => {
+  res.json(users.filter(user => user.name === req.user.name))
+})
 
-  const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET)
-  const response = {
-    user,
-    accessToken
+app.post('/users/signup', async (req, res) => {
+  const name = req.body.name
+  const password = req.body.password
+
+  const userJwt = { name }
+  const accessToken = jwt.sign(userJwt, process.env.ACCESS_TOKEN_SECRET)
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10)
+    const user = { name, password: hashedPassword, accessToken }
+    users.push(user)
+    res.status(201).send()
+  } catch {
+    res.status(500).send()
   }
-  res.json(response)
 })
 
-// plug generated token in the header using postman
-// then we can access to the protected CRUD routes
-app.get('/create', authenticateToken, (req, res) => {
+app.post('/users/login', async (req, res) => {
+  const user = users.find(user => user.name === req.body.name)
+  if (user == null) {
+    return res.status(400).send('Cannot find user')
+  }
+  try {
+    if (await bcrypt.compare(req.body.password, user.password)) {
+      res.send('Success')
+    } else {
+      res.send('Not Allowed')
+    }
+  } catch {
+    res.status(500).send()
+  }
+})
+
+app.get('/user/create', authenticateToken, (req, res) => {
   res.status(200).send('Create')
 })
 
-app.get('/read', authenticateToken, (req, res) => {
+app.get('/user/read', authenticateToken, (req, res) => {
   res.status(200).send('Read')
 })
 
-app.get('/update', authenticateToken, (req, res) => {
+app.get('/user/update', authenticateToken, (req, res) => {
   res.status(200).send('update')
 })
 
-app.get('/delete', authenticateToken, (req, res) => {
+app.get('/user/delete', authenticateToken, (req, res) => {
   res.status(200).send('delete')
 })
 
-// function for verify the token
 function authenticateToken (req, res, next) {
   const authHeader = req.headers.authorization
   const token = authHeader && authHeader.split(' ')[1]
@@ -56,6 +79,4 @@ function authenticateToken (req, res, next) {
   })
 };
 
-app.listen(5000, () => {
-  console.log('Server listening on port 5000')
-})
+app.listen(5000, () => console.log('Server started on port 5000'))
