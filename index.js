@@ -4,6 +4,7 @@ const express = require('express')
 const app = express()
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
+const crypro = require('crypto')
 
 app.use(express.json())
 
@@ -14,19 +15,19 @@ app.get('/users', (req, res) => {
 })
 
 app.get('/user/my-details', authenticateToken, (req, res) => {
-  res.json(users.filter(user => user.name === req.user.name))
+  res.json(users.filter(user => user.email === req.user.email))
 })
 
 app.post('/users/signup', async (req, res) => {
-  const name = req.body.name
+  const email = req.body.email
   const password = req.body.password
 
-  const userJwt = { name }
+  const userJwt = { email }
   const accessToken = jwt.sign(userJwt, process.env.ACCESS_TOKEN_SECRET)
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10)
-    const user = { name, password: hashedPassword, accessToken }
+    const user = { email, password: hashedPassword, accessToken }
     users.push(user)
     res.status(201).send()
   } catch {
@@ -35,7 +36,7 @@ app.post('/users/signup', async (req, res) => {
 })
 
 app.post('/users/login', async (req, res) => {
-  const user = users.find(user => user.name === req.body.name)
+  const user = users.find(user => user.email === req.body.email)
   if (user == null) {
     return res.status(400).send('Cannot find user')
   }
@@ -48,6 +49,19 @@ app.post('/users/login', async (req, res) => {
   } catch {
     res.status(500).send()
   }
+})
+
+app.post('/users/forgot-password', (req, res) => {
+  const user = users.find(user => user.email === req.body.email)
+  if (user == null) {
+    return res.status(400).send('Cannot find user')
+  }
+  const resetToken = crypro.randomBytes(20).toString('hex')
+  const response = {
+    message: `Password reset link has been sent to ${req.body.email}`,
+    resetToken
+  }
+  return res.status(200).json(response)
 })
 
 app.get('/user/create', authenticateToken, (req, res) => {
